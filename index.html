@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Abacus Adventure 🧮</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    user-select: none;
+  }
+  .screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 16px; }
+  .hidden { display: none !important; }
+
+  /* ---------- Home ---------- */
+  #home { background: linear-gradient(180deg,#a5f3fc,#bae6fd 35%,#fef08a); padding-top: 28px; }
+  .big-emoji { font-size: 64px; }
+  h1 { font-size: 44px; color: #075985; text-shadow: 3px 3px 0 #fff; text-align: center; }
+  .tagline { font-size: 20px; font-weight: bold; color: #b45309; margin: 4px 0 24px; }
+  .level-list { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 440px; }
+  .level-btn {
+    border: 4px solid #fff; border-radius: 24px; padding: 14px 18px;
+    display: flex; align-items: center; gap: 16px; cursor: pointer;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.15); transition: transform 0.15s;
+    font-family: inherit; text-align: left;
+  }
+  .level-btn:hover { transform: scale(1.04); }
+  .level-btn:active { transform: scale(0.96); }
+  .level-btn .em { font-size: 44px; }
+  .level-btn .name { font-size: 22px; font-weight: 800; color: #1f2937; }
+  .level-btn .desc { font-size: 15px; font-weight: 700; color: #374151; }
+  .level-btn .stars { margin-left: auto; font-size: 18px; font-weight: 800; color: #6b7280; white-space: nowrap; }
+
+  /* ---------- Play ---------- */
+  #play { background: linear-gradient(180deg,#bae6fd,#e0f2fe 40%,#fef9c3); padding-top: 70px; }
+  .home-btn {
+    position: fixed; top: 12px; left: 12px; z-index: 60;
+    background: #fff; border: 4px solid #38bdf8; border-radius: 999px;
+    padding: 8px 18px; font-size: 22px; font-weight: 800; color: #0284c7;
+    cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); font-family: inherit;
+  }
+  .home-btn:active { transform: scale(0.94); }
+  .dots { display: flex; gap: 8px; margin-bottom: 12px; }
+  .dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.2); background: #d1d5db; }
+  .dot.done { background: #4ade80; }
+  .dot.now { background: #facc15; }
+  .level-title { font-size: 26px; font-weight: 800; color: #075985; margin-bottom: 10px; }
+  .question-card {
+    background: #fff; border: 4px solid #fcd34d; border-radius: 20px;
+    padding: 12px 26px; font-size: 26px; font-weight: 800; color: #78350f;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15); margin-bottom: 16px; text-align: center;
+  }
+  .question-card .big { font-size: 46px; color: #e11d48; }
+  .question-card .math { font-size: 46px; color: #16a34a; }
+
+  /* ---------- Abacus ---------- */
+  .abacus-frame {
+    background: linear-gradient(135deg,#b45309,#92400e);
+    border: 4px solid #78350f; border-radius: 26px; padding: 14px;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.3);
+  }
+  .abacus-inner {
+    background: linear-gradient(180deg,#fef3c7,#fde68a);
+    border: 4px solid #451a03; border-radius: 18px;
+    padding: 12px 20px; display: flex; gap: 14px;
+  }
+  .rod { position: relative; width: 72px; height: 328px; }
+  .rod-stick { position: absolute; left: 50%; top: 0; width: 8px; margin-left: -4px; height: 100%; background: #451a03; border-radius: 999px; }
+  .beam { position: absolute; left: -10px; right: -10px; top: 85px; height: 10px; background: #78350f; border-radius: 4px; }
+  .bead {
+    position: absolute; left: 50%; width: 56px; height: 36px; margin-left: -28px;
+    border-radius: 999px; cursor: pointer; border: 2px solid;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.25);
+    transition: top 0.22s cubic-bezier(.34,1.56,.64,1);
+  }
+  .bead.heaven { border-color: #be123c; background: radial-gradient(circle at 35% 30%, #fda4af, #f43f5e 60%, #be123c); }
+  .bead.earth { border-color: #0f766e; background: radial-gradient(circle at 35% 30%, #99f6e4, #14b8a6 60%, #0f766e); }
+  .abacus-frame.locked .bead { cursor: default; }
+
+  .live-value {
+    margin-top: 14px; background: #fff; border: 4px solid #818cf8; border-radius: 20px;
+    padding: 6px 30px; font-size: 40px; font-weight: 800; color: #4338ca;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15); text-align: center;
+  }
+  .live-value .lbl { display: block; font-size: 14px; color: #6b7280; }
+  .legend { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; justify-content: center; }
+  .legend span { background: #fff; border-radius: 999px; padding: 5px 14px; font-size: 14px; font-weight: 800; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+  .legend .five { color: #e11d48; border: 2px solid #fda4af; }
+  .legend .one { color: #0f766e; border: 2px solid #99f6e4; }
+
+  .check-btn {
+    margin-top: 18px; background: #22c55e; border: 4px solid #15803d; color: #fff;
+    font-size: 28px; font-weight: 800; border-radius: 999px; padding: 14px 44px;
+    cursor: pointer; box-shadow: 0 6px 14px rgba(0,0,0,0.25); font-family: inherit;
+  }
+  .check-btn:hover { background: #4ade80; }
+  .check-btn:active { transform: scale(0.95); }
+  .choices { display: flex; gap: 16px; margin-top: 18px; }
+  .choice-btn {
+    width: 84px; height: 84px; background: #fff; border: 4px solid #38bdf8; border-radius: 20px;
+    font-size: 38px; font-weight: 800; color: #0369a1; cursor: pointer;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.2); font-family: inherit;
+  }
+  .choice-btn:hover { background: #e0f2fe; }
+  .choice-btn:active { transform: scale(0.94); }
+  .feedback { height: 52px; margin-top: 12px; font-size: 28px; font-weight: 800; }
+  .feedback.yay { color: #16a34a; }
+  .feedback.oops { color: #f43f5e; }
+  @keyframes wiggle { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+  .shake { animation: wiggle 0.3s ease 2; }
+
+  /* ---------- Results ---------- */
+  #results { background: linear-gradient(180deg,#fde68a,#fbcfe8); justify-content: center; }
+  .results-card {
+    background: #fff; border: 8px solid #facc15; border-radius: 28px;
+    padding: 34px; text-align: center; max-width: 420px; width: 100%;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.25);
+  }
+  .results-card .em { font-size: 60px; }
+  .results-card h2 { font-size: 28px; color: #92400e; margin: 6px 0 14px; }
+  .results-card .stars { font-size: 46px; margin-bottom: 12px; }
+  .results-card .msg { font-size: 20px; font-weight: 800; color: #0369a1; margin-bottom: 24px; }
+  .action-btn {
+    display: block; width: 100%; margin-bottom: 12px; padding: 13px;
+    border-radius: 999px; font-size: 22px; font-weight: 800; color: #fff;
+    cursor: pointer; border: 4px solid; box-shadow: 0 5px 12px rgba(0,0,0,0.2); font-family: inherit;
+  }
+  .action-btn:active { transform: scale(0.96); }
+  .btn-next { background: #8b5cf6; border-color: #6d28d9; }
+  .btn-replay { background: #22c55e; border-color: #15803d; }
+  .btn-home { background: #0ea5e9; border-color: #0369a1; }
+
+  /* ---------- Confetti ---------- */
+  .confetti-bit { position: fixed; top: -5vh; font-size: 30px; z-index: 100; pointer-events: none; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(115vh) rotate(360deg); opacity: 0.6; } }
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="home" class="screen">
+  <div class="big-emoji">🧮</div>
+  <h1>Abacus Adventure</h1>
+  <div class="tagline">🦉 Let's play with numbers!</div>
+  <div class="level-list" id="levelList"></div>
+</div>
+
+<!-- PLAY -->
+<div id="play" class="screen hidden">
+  <button class="home-btn" onclick="goHome()">🏠 Home</button>
+  <div class="dots" id="dots"></div>
+  <div class="level-title" id="levelTitle"></div>
+  <div class="question-card" id="questionCard"></div>
+  <div id="abacusWrap"></div>
+  <div class="legend">
+    <span class="five">🔴 red bead = 5</span>
+    <span class="one">🟢 green bead = 1</span>
+  </div>
+  <div id="answerArea"></div>
+  <div class="feedback" id="feedback"></div>
+</div>
+
+<!-- RESULTS -->
+<div id="results" class="screen hidden">
+  <button class="home-btn" onclick="goHome()">🏠 Home</button>
+  <div class="results-card">
+    <div class="em" id="resEmoji"></div>
+    <h2 id="resTitle"></h2>
+    <div class="stars" id="resStars"></div>
+    <div class="msg" id="resMsg"></div>
+    <button class="action-btn btn-next" id="btnNext" onclick="nextLevel()">Next level ➡️</button>
+    <button class="action-btn btn-replay" onclick="replayLevel()">Play again 🔁</button>
+    <button class="action-btn btn-home" onclick="goHome()">🏠 Home</button>
+  </div>
+</div>
+
+<script>
+// ============ Sound ============
+let audioCtx = null;
+function tone(freq, dur, type, vol, when) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const t = audioCtx.currentTime + (when || 0);
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = type || "sine"; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol || 0.15, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(t); o.stop(t + dur);
+  } catch (e) {}
+}
+const clickSound = () => tone(520, 0.06, "triangle", 0.12);
+const yaySound = () => { tone(523,0.12); tone(659,0.12,"sine",0.15,0.1); tone(784,0.2,"sine",0.15,0.2); };
+const oopsSound = () => { tone(330,0.15,"sine",0.1); tone(262,0.2,"sine",0.1,0.12); };
+
+// ============ Levels ============
+const rand = n => Math.floor(Math.random() * n);
+const LEVELS = [
+  { id:1, name:"Tiny Numbers", emoji:"🐣", color:"#fde047", desc:"Make numbers 1 to 4", type:"make", rods:1,
+    gen: () => ({ target: 1 + rand(4) }) },
+  { id:2, name:"Magic Five", emoji:"⭐", color:"#fdba74", desc:"Make numbers 5 to 9", type:"make", rods:1,
+    gen: () => ({ target: 5 + rand(5) }) },
+  { id:3, name:"Bead Detective", emoji:"🔍", color:"#7dd3fc", desc:"What number do you see?", type:"read", rods:1,
+    gen: () => ({ target: 1 + rand(9) }) },
+  { id:4, name:"Big Kid Numbers", emoji:"🚀", color:"#c4b5fd", desc:"Make numbers 10 to 99", type:"make", rods:2,
+    gen: () => ({ target: 10 + rand(90) }) },
+  { id:7, name:"Watch It Count", emoji:"🔢", color:"#a5b4fc", desc:"Add up — the number shows as you move!", type:"math", rods:1, showValue:true,
+    gen: () => { const a = 1 + rand(5), b = 1 + rand(9 - a); return { a, b, op:"+", target: a + b }; } },
+  { id:5, name:"Add It Up", emoji:"➕", color:"#86efac", desc:"Make the answer!", type:"math", rods:1,
+    gen: () => { const a = 1 + rand(5), b = 1 + rand(9 - a); return { a, b, op:"+", target: a + b }; } },
+  { id:6, name:"Take Away", emoji:"➖", color:"#f9a8d4", desc:"Subtract like a champ", type:"math", rods:1,
+    gen: () => { const a = 3 + rand(7), b = 1 + rand(a - 1); return { a, b, op:"−", target: a - b }; } },
+];
+const QUESTIONS = 5;
+
+// ============ State ============
+let state = {
+  levelIndex: 0, qIndex: 0, stars: 0, firstTry: true,
+  rods: [], question: null, choices: null, locked: false,
+  bestStars: {}
+};
+
+// ============ Screens ============
+function show(id) {
+  ["home","play","results"].forEach(s => document.getElementById(s).classList.toggle("hidden", s !== id));
+  window.scrollTo(0, 0);
+}
+function goHome() { renderHome(); show("home"); }
+
+// ============ Home ============
+function renderHome() {
+  const list = document.getElementById("levelList");
+  list.innerHTML = "";
+  LEVELS.forEach((lv, i) => {
+    const best = state.bestStars[lv.id];
+    const btn = document.createElement("button");
+    btn.className = "level-btn";
+    btn.style.background = lv.color;
+    btn.onclick = () => startLevel(i);
+    btn.innerHTML = `
+      <span class="em">${lv.emoji}</span>
+      <span>
+        <span class="name" style="display:block">${lv.name}</span>
+        <span class="desc" style="display:block">${lv.desc}</span>
+      </span>
+      <span class="stars">${best != null ? "⭐".repeat(Math.max(1, best)) : "Play!"}</span>`;
+    list.appendChild(btn);
+  });
+}
+
+// ============ Play ============
+function startLevel(i) {
+  state.levelIndex = i; state.qIndex = 0; state.stars = 0;
+  newQuestion();
+  show("play");
+}
+function replayLevel() { startLevel(state.levelIndex); }
+function nextLevel() {
+  if (state.levelIndex < LEVELS.length - 1) startLevel(state.levelIndex + 1);
+  else goHome();
+}
+function level() { return LEVELS[state.levelIndex]; }
+
+function newQuestion() {
+  const lv = level();
+  state.firstTry = true; state.locked = false;
+  state.question = lv.gen();
+  state.rods = Array.from({ length: lv.rods }, () => ({ heaven: false, earth: 0 }));
+  if (lv.type === "read") {
+    state.rods = rodsForValue(state.question.target, 1);
+    state.choices = makeChoices(state.question.target);
+  }
+  renderPlay();
+}
+
+function rodsForValue(v, n) {
+  return String(v).padStart(n, "0").split("").map(Number)
+    .map(d => ({ heaven: d >= 5, earth: d % 5 }));
+}
+function makeChoices(target) {
+  const set = new Set([target]);
+  while (set.size < 3) { const c = 1 + rand(9); if (c !== target) set.add(c); }
+  return [...set].sort(() => Math.random() - 0.5);
+}
+function rodValue(r) { return (r.heaven ? 5 : 0) + r.earth; }
+function abacusValue() { return state.rods.reduce((a, r) => a * 10 + rodValue(r), 0); }
+
+function renderPlay() {
+  const lv = level();
+  document.getElementById("levelTitle").textContent = `${lv.emoji} ${lv.name}`;
+
+  // dots
+  const dots = document.getElementById("dots");
+  dots.innerHTML = "";
+  for (let i = 0; i < QUESTIONS; i++) {
+    const d = document.createElement("div");
+    d.className = "dot" + (i < state.qIndex ? " done" : i === state.qIndex ? " now" : "");
+    dots.appendChild(d);
+  }
+
+  // question
+  const q = state.question, card = document.getElementById("questionCard");
+  if (lv.type === "make") card.innerHTML = `Make the number <span class="big">${q.target}</span>`;
+  else if (lv.type === "math") card.innerHTML = `<span class="math">${q.a} ${q.op} ${q.b}</span> = ?`;
+  else card.innerHTML = `What number is this? 🤔`;
+
+  renderAbacus();
+
+  // answer area
+  const area = document.getElementById("answerArea");
+  area.innerHTML = "";
+  if (lv.type === "read") {
+    const wrap = document.createElement("div");
+    wrap.className = "choices";
+    state.choices.forEach(c => {
+      const b = document.createElement("button");
+      b.className = "choice-btn"; b.textContent = c;
+      b.onclick = () => pickChoice(c);
+      wrap.appendChild(b);
+    });
+    area.appendChild(wrap);
+  } else {
+    const b = document.createElement("button");
+    b.className = "check-btn"; b.textContent = "Check! ✅";
+    b.onclick = checkAnswer;
+    area.appendChild(b);
+  }
+  setFeedback("", "");
+}
+
+function renderAbacus() {
+  const lv = level();
+  const wrap = document.getElementById("abacusWrap");
+  const HEAVEN_H = 88, GAP = 38, BEAD_H = 36, EARTH_H = 4 * GAP + 44;
+  const frame = document.createElement("div");
+  frame.className = "abacus-frame" + (state.locked || lv.type === "read" ? " locked" : "");
+  frame.id = "abacusFrame";
+  const inner = document.createElement("div");
+  inner.className = "abacus-inner";
+
+  state.rods.forEach((r, idx) => {
+    const rod = document.createElement("div");
+    rod.className = "rod";
+    rod.innerHTML = `<div class="rod-stick"></div><div class="beam"></div>`;
+
+    // heaven bead
+    const hb = document.createElement("div");
+    hb.className = "bead heaven";
+    hb.style.top = (r.heaven ? HEAVEN_H - BEAD_H - 6 : 6) + "px";
+    hb.onclick = () => {
+      if (state.locked || lv.type === "read") return;
+      clickSound(); r.heaven = !r.heaven; renderAbacus();
+    };
+    rod.appendChild(hb);
+
+    // earth beads
+    for (let i = 0; i < 4; i++) {
+      const eb = document.createElement("div");
+      eb.className = "bead earth";
+      const active = i < r.earth;
+      eb.style.top = (active ? HEAVEN_H + 12 + i * GAP : HEAVEN_H + EARTH_H - (4 - i) * GAP - 6) + "px";
+      eb.onclick = () => {
+        if (state.locked || lv.type === "read") return;
+        clickSound(); r.earth = (i < r.earth) ? i : i + 1; renderAbacus();
+      };
+      rod.appendChild(eb);
+    }
+    inner.appendChild(rod);
+  });
+
+  frame.appendChild(inner);
+  wrap.innerHTML = "";
+  wrap.appendChild(frame);
+
+  if (lv.showValue) {
+    const lvEl = document.createElement("div");
+    lvEl.className = "live-value";
+    lvEl.innerHTML = `<span class="lbl">Your abacus says</span>${abacusValue()}`;
+    wrap.appendChild(lvEl);
+  }
+}
+
+function setFeedback(text, cls) {
+  const f = document.getElementById("feedback");
+  f.textContent = text;
+  f.className = "feedback " + cls;
+}
+
+function checkAnswer() {
+  if (state.locked) return;
+  if (abacusValue() === state.question.target) correct();
+  else wrong();
+}
+function pickChoice(c) {
+  if (state.locked) return;
+  if (c === state.question.target) correct();
+  else wrong();
+}
+
+function correct() {
+  state.locked = true;
+  yaySound(); confetti();
+  if (state.firstTry) state.stars++;
+  setFeedback("🎉 You got it!", "yay");
+  setTimeout(() => {
+    state.qIndex++;
+    if (state.qIndex >= QUESTIONS) showResults();
+    else newQuestion();
+  }, 1500);
+}
+function wrong() {
+  oopsSound();
+  state.firstTry = false;
+  setFeedback("Almost! Try again 💪", "oops");
+  const frame = document.getElementById("abacusFrame");
+  frame.classList.add("shake");
+  setTimeout(() => { frame.classList.remove("shake"); setFeedback("", ""); }, 900);
+}
+
+// ============ Results ============
+function showResults() {
+  const lv = level();
+  state.bestStars[lv.id] = Math.max(state.bestStars[lv.id] || 0, state.stars);
+  document.getElementById("resEmoji").textContent = lv.emoji;
+  document.getElementById("resTitle").textContent = lv.name + " done!";
+  document.getElementById("resStars").textContent = "⭐".repeat(state.stars) + "☆".repeat(QUESTIONS - state.stars);
+  document.getElementById("resMsg").textContent =
+    state.stars === QUESTIONS ? "PERFECT! You're an abacus superstar!" :
+    state.stars >= 3 ? "Great job! Keep practicing!" : "Good try! Practice makes perfect!";
+  document.getElementById("btnNext").style.display = state.levelIndex < LEVELS.length - 1 ? "block" : "none";
+  confetti();
+  show("results");
+}
+
+// ============ Confetti ============
+function confetti() {
+  const bits = ["🎉","⭐","✨","🎈","🌟"];
+  for (let i = 0; i < 18; i++) {
+    const s = document.createElement("span");
+    s.className = "confetti-bit";
+    s.textContent = bits[i % bits.length];
+    s.style.left = ((i * 137) % 100) + "%";
+    s.style.animationDuration = (1.4 + (i % 5) * 0.25) + "s";
+    s.style.animationDelay = ((i % 6) * 0.08) + "s";
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 3000);
+  }
+}
+
+// ============ Boot ============
+renderHome();
+</script>
+</body>
+</html>
