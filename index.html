@@ -111,6 +111,18 @@
   @keyframes wiggle { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
   .shake { animation: wiggle 0.3s ease 2; }
 
+  /* ---------- Belts, streak, special modes ---------- */
+  .status-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; }
+  .chip { border-radius: 999px; padding: 6px 14px; font-size: 14px; font-weight: 800; border: 2px solid rgba(0,0,0,0.15); box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+  .mode-row { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 440px; margin-bottom: 16px; }
+  .mode-btn { border: 4px solid #fff; border-radius: 20px; padding: 12px 16px; font-size: 20px; font-weight: 800; cursor: pointer; box-shadow: 0 5px 12px rgba(0,0,0,0.18); font-family: inherit; text-align: left; }
+  .mode-btn:active { transform: scale(0.97); }
+  .mode-desc { display: block; font-size: 13px; font-weight: 700; opacity: 0.85; }
+  .exam-bar { background: #fff; border: 3px solid #8b5cf6; border-radius: 999px; padding: 6px 18px; font-size: 17px; font-weight: 800; color: #5b21b6; margin-bottom: 10px; box-shadow: 0 3px 8px rgba(0,0,0,0.15); }
+  .flash-box { width: 200px; height: 140px; background: #1e293b; color: #fde047; border: 6px solid #475569; border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 72px; font-weight: 800; box-shadow: 0 10px 24px rgba(0,0,0,0.3); }
+  .abacus-inner { transition: opacity 0.6s; }
+  .abacus-frame.faded .abacus-inner { opacity: 0.03; }
+
   /* ---------- Timer & Report ---------- */
   .timer-card {
     background: #fff; border: 4px dashed #94a3b8; border-radius: 20px;
@@ -226,6 +238,8 @@
     </div>
     <div class="tc-note" id="timerNote">Any amount of minutes works. When time runs out you'll see a report of everything she did. (No timer? She can just play.)</div>
   </div>
+  <div class="status-row" id="statusRow"></div>
+  <div class="mode-row" id="modeRow"></div>
   <div class="level-list" id="levelList"></div>
 </div>
 
@@ -233,6 +247,7 @@
 <div id="play" class="screen hidden">
   <button class="home-btn" onclick="goHome()">🏠 Home</button>
   <div class="dots" id="dots"></div>
+  <div class="exam-bar hidden" id="examBar"></div>
   <div class="level-title" id="levelTitle"></div>
   <div class="question-card" id="questionCard"></div>
   <div id="abacusWrap"></div>
@@ -325,15 +340,185 @@ const LEVELS = [
     gen: () => { const a = 1 + rand(5), b = 1 + rand(9 - a); return { a, b, op:"+", target: a + b }; } },
   { id:6, name:"Take Away", emoji:"➖", color:"#f9a8d4", desc:"Subtract like a champ", type:"math", rods:1,
     gen: () => { const a = 3 + rand(7), b = 1 + rand(a - 1); return { a, b, op:"−", target: a - b }; } },
+  { id:8, name:"Ghost Beads", emoji:"👻", color:"#ddd6fe", desc:"Peek fast — then it vanishes!", type:"ghost", rods:1,
+    gen: () => ({ target: 1 + rand(9) }) },
+  { id:9, name:"Flash Master", emoji:"🧠", color:"#fca5a5", desc:"No abacus — all in your head!", type:"flash", rods:0,
+    gen: () => { const nums = [1 + rand(5), 1 + rand(5), 1 + rand(5)]; return { nums, target: nums[0] + nums[1] + nums[2] }; } },
 ];
 const QUESTIONS = 5;
+
+// ============ Saved progress (persists when opened as a file in a browser) ============
+const store = {
+  get(k, fb) { try { const v = localStorage.getItem("abacus_" + k); return v == null ? fb : JSON.parse(v); } catch (e) { return fb; } },
+  set(k, v) { try { localStorage.setItem("abacus_" + k, JSON.stringify(v)); } catch (e) {} }
+};
+function bumpStreak() {
+  const today = new Date().toDateString();
+  const st = store.get("streak", { last: null, count: 0 });
+  if (st.last === today) return;
+  const yest = new Date(Date.now() - 86400000).toDateString();
+  st.count = (st.last === yest) ? st.count + 1 : 1;
+  st.last = today;
+  store.set("streak", st);
+}
+function streakCount() {
+  const st = store.get("streak", { last: null, count: 0 });
+  if (!st.last) return 0;
+  const today = new Date().toDateString();
+  const yest = new Date(Date.now() - 86400000).toDateString();
+  return (st.last === today || st.last === yest) ? st.count : 0;
+}
+
+// ============ Belt system (modeled on Indian abacus academies) ============
+const BELT_META = [
+  { name: "White",  c: "#e2e8f0", t: "#334155" },
+  { name: "Yellow", c: "#fde047", t: "#713f12" },
+  { name: "Orange", c: "#fb923c", t: "#7c2d12" },
+  { name: "Green",  c: "#4ade80", t: "#14532d" },
+  { name: "Blue",   c: "#60a5fa", t: "#1e3a8a" },
+  { name: "Purple", c: "#a78bfa", t: "#4c1d95" },
+  { name: "Brown",  c: "#a16207", t: "#ffffff" },
+  { name: "Red",    c: "#f87171", t: "#7f1d1d" },
+  { name: "Black",  c: "#1e293b", t: "#ffffff" },
+];
+const BELT_TESTS = [
+  null, // White — everyone starts here
+  { name: "Yellow", type: "make", rods: 1, count: 8, timeSec: 120, maxWrong: 2,
+    gen: () => ({ target: 1 + rand(9) }), desc: "Make 8 numbers (1–9) in 2 min" },
+  { name: "Orange", type: "read", rods: 1, count: 8, timeSec: 120, maxWrong: 2,
+    gen: () => ({ target: 1 + rand(9) }), desc: "Read 8 abacuses in 2 min" },
+  { name: "Green", type: "math", rods: 1, count: 8, timeSec: 180, maxWrong: 2,
+    gen: () => { const a = 1 + rand(5), b = 1 + rand(9 - a); return { a, b, op: "+", target: a + b }; }, desc: "8 additions in 3 min" },
+  { name: "Blue", type: "math", rods: 1, count: 8, timeSec: 180, maxWrong: 2,
+    gen: () => { const a = 3 + rand(7), b = 1 + rand(a - 1); return { a, b, op: "−", target: a - b }; }, desc: "8 subtractions in 3 min" },
+  { name: "Purple", type: "make", rods: 2, count: 6, timeSec: 180, maxWrong: 2,
+    gen: () => ({ target: 10 + rand(90) }), desc: "Make 6 big numbers (10–99) in 3 min" },
+  { name: "Brown", type: "ghost", rods: 1, count: 6, timeSec: 180, maxWrong: 2,
+    gen: () => ({ target: 1 + rand(9) }), desc: "6 vanishing abacuses in 3 min" },
+  { name: "Red", type: "lightning", timeSec: 60, targetScore: 12, desc: "Solve 12+ in a 60-second Lightning Round" },
+  { name: "Black", type: "flash", rods: 0, count: 5, timeSec: 240, maxWrong: 1,
+    gen: () => { const nums = [1 + rand(5), 1 + rand(5), 1 + rand(5)]; return { nums, target: nums[0] + nums[1] + nums[2] }; }, desc: "5 flash anzan problems — no abacus at all!" },
+];
+
+function makeChoicesRange(target, lo, hi) {
+  const set = new Set([target]);
+  while (set.size < 3) { const c = lo + rand(hi - lo + 1); set.add(c); }
+  return [...set].sort(() => Math.random() - 0.5);
+}
+
+function startBeltTest() {
+  const next = state.belt + 1;
+  if (next >= BELT_TESTS.length) return;
+  const t = BELT_TESTS[next];
+  clearExam();
+  screenToken++;
+  state.lastMode = { kind: "belt" };
+  if (t.type === "lightning") { startLightning(next); return; }
+  state.customLevel = { name: t.name + " Belt Test", emoji: "🥋", type: t.type, rods: t.rods, gen: t.gen };
+  state.exam = { count: t.count, timeLeft: t.timeSec, maxWrong: t.maxWrong, wrong: 0, beltIndex: next, lightning: false, score: 0 };
+  state.qIndex = 0; state.stars = 0;
+  state.exam.tick = setInterval(examTick, 1000);
+  newQuestion();
+  show("play");
+}
+
+function startLightning(beltIndex) {
+  clearExam();
+  screenToken++;
+  state.lastMode = { kind: beltIndex != null ? "belt" : "lightning" };
+  state.customLevel = {
+    name: "Lightning Round", emoji: "⚡", type: "lightning", rods: 1,
+    gen: () => {
+      if (rand(2) === 0) return { kind: "make", target: 1 + rand(9) };
+      const a = 1 + rand(5), b = 1 + rand(9 - a);
+      return { kind: "math", a, b, op: "+", target: a + b };
+    }
+  };
+  state.exam = {
+    count: Infinity, timeLeft: 60, maxWrong: Infinity, wrong: 0,
+    beltIndex: beltIndex != null ? beltIndex : null, lightning: true, score: 0,
+    targetScore: beltIndex != null ? BELT_TESTS[beltIndex].targetScore : null
+  };
+  state.qIndex = 0; state.stars = 0;
+  state.exam.tick = setInterval(examTick, 1000);
+  newQuestion();
+  show("play");
+}
+
+function examTick() {
+  const e = state.exam;
+  if (!e) return;
+  e.timeLeft--;
+  updateExamBar();
+  if (e.timeLeft <= 0) examEnd(false);
+}
+function updateExamBar() {
+  const e = state.exam;
+  if (!e) return;
+  const bar = document.getElementById("examBar");
+  bar.classList.remove("hidden");
+  const m = Math.floor(Math.max(0, e.timeLeft) / 60), s = Math.max(0, e.timeLeft) % 60;
+  bar.textContent = e.lightning
+    ? `⚡ Score: ${e.score}  •  ${m}:${String(s).padStart(2, "0")} left`
+    : `🥋 ${m}:${String(s).padStart(2, "0")} left  •  Misses: ${e.wrong}/${e.maxWrong}`;
+}
+function clearExam() {
+  if (state.exam && state.exam.tick) clearInterval(state.exam.tick);
+  state.exam = null;
+  state.customLevel = null;
+  const bar = document.getElementById("examBar");
+  if (bar) bar.classList.add("hidden");
+}
+function examEnd(passedByCount) {
+  const e = state.exam;
+  if (!e) return;
+  clearInterval(e.tick);
+  let passed, title, scoreLine, msg, emoji;
+  if (e.lightning) {
+    emoji = "⚡"; title = "Lightning Round";
+    state.lightningBest = Math.max(state.lightningBest || 0, e.score);
+    store.set("lightningBest", state.lightningBest);
+    scoreLine = `⚡ ${e.score}`;
+    if (e.beltIndex != null) {
+      passed = e.score >= e.targetScore;
+      msg = passed ? `${e.score} solved — the RED BELT is yours! 🔥`
+                   : `${e.score} solved — you need ${e.targetScore} for the Red Belt. Practice and retry!`;
+    } else {
+      passed = e.score > 0;
+      msg = `${e.score} solved in 60 seconds! Best ever: ${state.lightningBest} ⚡`;
+    }
+  } else {
+    emoji = "🥋"; title = BELT_TESTS[e.beltIndex].name + " Belt Test";
+    passed = passedByCount && e.wrong <= e.maxWrong;
+    scoreLine = passed ? "🏆" : "💪";
+    msg = passed ? `PASSED! The ${BELT_TESTS[e.beltIndex].name} Belt is yours!`
+        : e.timeLeft <= 0 ? "Time ran out — a little more practice and you'll fly through it!"
+        : "Too many misses this time — you're close, try again!";
+  }
+  if (passed && e.beltIndex != null && e.beltIndex > state.belt) {
+    state.belt = e.beltIndex;
+    store.set("belt", state.belt);
+  }
+  document.getElementById("resEmoji").textContent = emoji;
+  document.getElementById("resTitle").textContent = title;
+  document.getElementById("resStars").textContent = scoreLine;
+  document.getElementById("resMsg").textContent = msg;
+  document.getElementById("btnNext").style.display = "none";
+  if (passed) confetti();
+  state.exam = null;
+  state.customLevel = null;
+  document.getElementById("examBar").classList.add("hidden");
+  show("results");
+}
 
 // ============ State ============
 let state = {
   levelIndex: 0, qIndex: 0, stars: 0, firstTry: true,
   rods: [], question: null, choices: null, locked: false,
-  bestStars: {}
+  bestStars: {}, belt: 0, lightningBest: 0,
+  lastMode: null, customLevel: null, exam: null
 };
+let screenToken = 0;
 
 // ============ Session timer & activity tracking ============
 let session = null; // { plannedMins, startMs, endMs, tick, solved:{}, wrongTries:0, completed:[] }
@@ -481,7 +666,7 @@ function checkGate() {
 
 function recordSolve() {
   if (!session) return;
-  const id = level().id;
+  const id = level().id != null ? level().id : level().name;
   session.solved[id] = (session.solved[id] || 0) + 1;
 }
 function recordWrong() { if (session) session.wrongTries++; }
@@ -546,10 +731,30 @@ function show(id) {
   ["home","play","results","report"].forEach(s => document.getElementById(s).classList.toggle("hidden", s !== id));
   window.scrollTo(0, 0);
 }
-function goHome() { renderHome(); show("home"); }
+function goHome() { screenToken++; clearExam(); renderHome(); show("home"); }
 
 // ============ Home ============
 function renderHome() {
+  // status chips
+  const belt = BELT_META[state.belt];
+  document.getElementById("statusRow").innerHTML = `
+    <span class="chip" style="background:${belt.c};color:${belt.t}">🥋 ${belt.name} Belt</span>
+    <span class="chip" style="background:#fff;color:#b45309">🔥 ${streakCount()}-day streak</span>
+    <span class="chip" style="background:#fff;color:#4338ca">⚡ Best: ${state.lightningBest || 0}</span>`;
+
+  // special mode buttons
+  const next = state.belt + 1;
+  let beltBtn;
+  if (next < BELT_TESTS.length) {
+    const t = BELT_TESTS[next], m = BELT_META[next];
+    beltBtn = `<button class="mode-btn" style="background:${m.c};color:${m.t}" onclick="startBeltTest()">🥋 Test for the ${t.name} Belt<span class="mode-desc">${t.desc}</span></button>`;
+  } else {
+    beltBtn = `<button class="mode-btn" style="background:#1e293b;color:#fff">🖤 BLACK BELT MASTER! You did it!</button>`;
+  }
+  document.getElementById("modeRow").innerHTML = beltBtn +
+    `<button class="mode-btn" style="background:#fef08a;color:#713f12" onclick="startLightning(null)">⚡ Lightning Round<span class="mode-desc">60 seconds — solve as many as you can!</span></button>`;
+
+  // level list
   const list = document.getElementById("levelList");
   list.innerHTML = "";
   LEVELS.forEach((lv, i) => {
@@ -571,25 +776,36 @@ function renderHome() {
 
 // ============ Play ============
 function startLevel(i) {
+  screenToken++;
+  clearExam();
+  state.lastMode = { kind: "level" };
   state.levelIndex = i; state.qIndex = 0; state.stars = 0;
   newQuestion();
   show("play");
 }
-function replayLevel() { startLevel(state.levelIndex); }
+function replayLevel() {
+  if (state.lastMode && state.lastMode.kind === "belt") return startBeltTest();
+  if (state.lastMode && state.lastMode.kind === "lightning") return startLightning(null);
+  startLevel(state.levelIndex);
+}
 function nextLevel() {
+  if (state.lastMode && state.lastMode.kind !== "level") return goHome();
   if (state.levelIndex < LEVELS.length - 1) startLevel(state.levelIndex + 1);
   else goHome();
 }
-function level() { return LEVELS[state.levelIndex]; }
+function level() { return state.customLevel || LEVELS[state.levelIndex]; }
 
 function newQuestion() {
   const lv = level();
   state.firstTry = true; state.locked = false;
   state.question = lv.gen();
-  state.rods = Array.from({ length: lv.rods }, () => ({ heaven: false, earth: 0 }));
-  if (lv.type === "read") {
+  state.rods = Array.from({ length: lv.rods || 0 }, () => ({ heaven: false, earth: 0 }));
+  if (lv.type === "read" || lv.type === "ghost") {
     state.rods = rodsForValue(state.question.target, 1);
-    state.choices = makeChoices(state.question.target);
+    state.choices = makeChoicesRange(state.question.target, 1, 9);
+  } else if (lv.type === "flash") {
+    const t = state.question.target;
+    state.choices = makeChoicesRange(t, Math.max(2, t - 4), t + 4);
   }
   renderPlay();
 }
@@ -608,29 +824,51 @@ function abacusValue() { return state.rods.reduce((a, r) => a * 10 + rodValue(r)
 
 function renderPlay() {
   const lv = level();
+  const token = ++screenToken;
   document.getElementById("levelTitle").textContent = `${lv.emoji} ${lv.name}`;
 
-  // dots
+  // progress dots (hidden during Lightning)
   const dots = document.getElementById("dots");
   dots.innerHTML = "";
-  for (let i = 0; i < QUESTIONS; i++) {
-    const d = document.createElement("div");
-    d.className = "dot" + (i < state.qIndex ? " done" : i === state.qIndex ? " now" : "");
-    dots.appendChild(d);
+  const isLightning = state.exam && state.exam.lightning;
+  const totalQ = state.exam && !isLightning ? state.exam.count : QUESTIONS;
+  if (!isLightning) {
+    for (let i = 0; i < totalQ; i++) {
+      const d = document.createElement("div");
+      d.className = "dot" + (i < state.qIndex ? " done" : i === state.qIndex ? " now" : "");
+      dots.appendChild(d);
+    }
   }
+  if (state.exam) updateExamBar();
+  else document.getElementById("examBar").classList.add("hidden");
 
   // question
   const q = state.question, card = document.getElementById("questionCard");
-  if (lv.type === "make") card.innerHTML = `Make the number <span class="big">${q.target}</span>`;
-  else if (lv.type === "math") card.innerHTML = `<span class="math">${q.a} ${q.op} ${q.b}</span> = ?`;
+  const kind = lv.type === "lightning" ? q.kind : lv.type;
+  if (kind === "make") card.innerHTML = `Make the number <span class="big">${q.target}</span>`;
+  else if (kind === "math") card.innerHTML = `<span class="math">${q.a} ${q.op} ${q.b}</span> = ?`;
+  else if (kind === "ghost") card.innerHTML = `Look fast — it's going to vanish! 👻`;
+  else if (kind === "flash") card.innerHTML = `Add the flashing numbers in your head! 🧠`;
   else card.innerHTML = `What number is this? 🤔`;
 
-  renderAbacus();
+  // abacus / flash display
+  if (kind === "flash") {
+    renderFlash(token);
+  } else {
+    renderAbacus();
+    if (kind === "ghost") {
+      setTimeout(() => {
+        if (token !== screenToken) return;
+        const f = document.getElementById("abacusFrame");
+        if (f) f.classList.add("faded");
+      }, 3000);
+    }
+  }
 
   // answer area
   const area = document.getElementById("answerArea");
   area.innerHTML = "";
-  if (lv.type === "read") {
+  if (kind === "read" || kind === "ghost" || kind === "flash") {
     const wrap = document.createElement("div");
     wrap.className = "choices";
     state.choices.forEach(c => {
@@ -649,12 +887,38 @@ function renderPlay() {
   setFeedback("", "");
 }
 
+function renderFlash(token) {
+  const wrap = document.getElementById("abacusWrap");
+  wrap.innerHTML = `<div class="flash-box" id="flashBox">👀</div>`;
+  const nums = state.question.nums;
+  state.locked = true; // no answering until the sequence finishes
+  nums.forEach((n, i) => {
+    setTimeout(() => {
+      if (token !== screenToken) return;
+      const b = document.getElementById("flashBox");
+      if (b) b.textContent = "";
+    }, 700 + i * 1000);
+    setTimeout(() => {
+      if (token !== screenToken) return;
+      const b = document.getElementById("flashBox");
+      if (b) { b.textContent = n; tone(560 + i * 90, 0.1, "triangle", 0.12); }
+    }, 850 + i * 1000);
+  });
+  setTimeout(() => {
+    if (token !== screenToken) return;
+    const b = document.getElementById("flashBox");
+    if (b) b.textContent = "= ?";
+    state.locked = false;
+  }, 850 + nums.length * 1000);
+}
+
 function renderAbacus() {
   const lv = level();
   const wrap = document.getElementById("abacusWrap");
   const HEAVEN_H = 88, GAP = 38, BEAD_H = 36, EARTH_H = 4 * GAP + 44;
+  const viewOnly = lv.type === "read" || lv.type === "ghost";
   const frame = document.createElement("div");
-  frame.className = "abacus-frame" + (state.locked || lv.type === "read" ? " locked" : "");
+  frame.className = "abacus-frame" + (state.locked || viewOnly ? " locked" : "");
   frame.id = "abacusFrame";
   const inner = document.createElement("div");
   inner.className = "abacus-inner";
@@ -669,7 +933,7 @@ function renderAbacus() {
     hb.className = "bead heaven";
     hb.style.top = (r.heaven ? HEAVEN_H - BEAD_H - 6 : 6) + "px";
     hb.onclick = () => {
-      if (state.locked || lv.type === "read") return;
+      if (state.locked || viewOnly) return;
       clickSound(); r.heaven = !r.heaven; renderAbacus();
     };
     rod.appendChild(hb);
@@ -681,7 +945,7 @@ function renderAbacus() {
       const active = i < r.earth;
       eb.style.top = (active ? HEAVEN_H + 12 + i * GAP : HEAVEN_H + EARTH_H - (4 - i) * GAP - 6) + "px";
       eb.onclick = () => {
-        if (state.locked || lv.type === "read") return;
+        if (state.locked || viewOnly) return;
         clickSound(); r.earth = (i < r.earth) ? i : i + 1; renderAbacus();
       };
       rod.appendChild(eb);
@@ -721,12 +985,20 @@ function pickChoice(c) {
 function correct() {
   state.locked = true;
   yaySound(); confetti();
-  recordSolve();
+  recordSolve(); bumpStreak();
+  if (state.exam && state.exam.lightning) {
+    state.exam.score++;
+    updateExamBar();
+    setFeedback("🎉 +1", "yay");
+    setTimeout(() => { if (state.exam) newQuestion(); }, 500);
+    return;
+  }
   if (state.firstTry) state.stars++;
   setFeedback("🎉 You got it!", "yay");
   setTimeout(() => {
     state.qIndex++;
-    if (state.qIndex >= QUESTIONS) showResults();
+    const total = state.exam ? state.exam.count : QUESTIONS;
+    if (state.qIndex >= total) { if (state.exam) examEnd(true); else showResults(); }
     else newQuestion();
   }, 1500);
 }
@@ -734,10 +1006,23 @@ function wrong() {
   oopsSound();
   recordWrong();
   state.firstTry = false;
+  if (state.exam && !state.exam.lightning) {
+    state.exam.wrong++;
+    updateExamBar();
+    if (state.exam.wrong > state.exam.maxWrong) {
+      setFeedback("Oh no — too many misses!", "oops");
+      setTimeout(() => examEnd(false), 800);
+      return;
+    }
+  }
   setFeedback("Almost! Try again 💪", "oops");
   const frame = document.getElementById("abacusFrame");
-  frame.classList.add("shake");
-  setTimeout(() => { frame.classList.remove("shake"); setFeedback("", ""); }, 900);
+  if (frame) {
+    frame.classList.add("shake");
+    setTimeout(() => { frame.classList.remove("shake"); setFeedback("", ""); }, 900);
+  } else {
+    setTimeout(() => setFeedback("", ""), 900);
+  }
 }
 
 // ============ Results ============
@@ -745,6 +1030,7 @@ function showResults() {
   const lv = level();
   recordComplete(state.stars);
   state.bestStars[lv.id] = Math.max(state.bestStars[lv.id] || 0, state.stars);
+  store.set("bestStars", state.bestStars);
   document.getElementById("resEmoji").textContent = lv.emoji;
   document.getElementById("resTitle").textContent = lv.name + " done!";
   document.getElementById("resStars").textContent = "⭐".repeat(state.stars) + "☆".repeat(QUESTIONS - state.stars);
@@ -772,6 +1058,9 @@ function confetti() {
 }
 
 // ============ Boot ============
+state.bestStars = store.get("bestStars", {});
+state.belt = store.get("belt", 0);
+state.lightningBest = store.get("lightningBest", 0);
 renderHome();
 </script>
 </body>
