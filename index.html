@@ -121,7 +121,30 @@
   .exam-bar { background: #fff; border: 3px solid #8b5cf6; border-radius: 999px; padding: 6px 18px; font-size: 17px; font-weight: 800; color: #5b21b6; margin-bottom: 10px; box-shadow: 0 3px 8px rgba(0,0,0,0.15); }
   .flash-box { width: 200px; height: 140px; background: #1e293b; color: #fde047; border: 6px solid #475569; border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 72px; font-weight: 800; box-shadow: 0 10px 24px rgba(0,0,0,0.3); }
   .abacus-inner { transition: opacity 0.6s; }
-  .abacus-frame.faded .abacus-inner { opacity: 0.03; }
+  .abacus-frame.faded { position: relative; }
+  .abacus-frame.faded .abacus-inner { opacity: 0; }
+  .abacus-frame.faded::after { content: "👻"; position: absolute; inset: 10px;
+    background: linear-gradient(180deg,#0f172a,#1e293b); border-radius: 16px;
+    display: flex; align-items: center; justify-content: center; font-size: 72px; }
+
+  /* ---------- Hand School ---------- */
+  #handschool { background: linear-gradient(180deg,#fed7aa,#fef3c7 40%,#e0f2fe); padding-top: 70px; }
+  .hs-title { font-size: 34px; font-weight: 800; color: #7c2d12; text-shadow: 2px 2px 0 #fff; }
+  .hs-sub { font-size: 18px; font-weight: 800; color: #b45309; margin: 4px 0 18px; text-align: center; }
+  .hand-card { background: #fff; border: 4px solid #fdba74; border-radius: 22px; padding: 16px;
+    margin-bottom: 16px; width: 100%; max-width: 440px; text-align: center;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.12); }
+  .hand-cap { font-size: 19px; font-weight: 800; color: #7c2d12; margin-top: 6px; }
+  .hand-cap small { display: block; font-size: 14px; color: #92400e; font-weight: 700; }
+  .hs-steps { text-align: left; font-size: 17px; font-weight: 800; color: #334155; }
+  .hs-steps div { padding: 7px 4px; border-bottom: 2px dashed #fde68a; }
+  .hs-steps div:last-child { border-bottom: none; }
+  .hs-confirm { margin: 6px 0 4px; background: #f59e0b; border: 4px solid #b45309; color: #fff;
+    font-size: 21px; font-weight: 800; border-radius: 999px; padding: 14px 30px; cursor: pointer;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.25); font-family: inherit; }
+  .hs-confirm:active { transform: scale(0.95); }
+  .hand-rules { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 10px; }
+  .hr-chip { border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 800; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 
   /* ---------- Timer & Report ---------- */
   .timer-card {
@@ -287,12 +310,48 @@
   </div>
 </div>
 
+<!-- HAND SCHOOL -->
+<div id="handschool" class="screen hidden">
+  <button class="home-btn" onclick="goHome()">🏠 Home</button>
+  <div class="hs-title">🖐️ Hand School</div>
+  <div class="hs-sub">Your hands are a secret calculator up to 99!</div>
+
+  <div class="hand-card">
+    <div class="hand-rules">
+      <span class="hr-chip" style="background:#c7d2fe;color:#3730a3">✋ LEFT hand: fingers = 10 each, thumb = 50</span>
+      <span class="hr-chip" style="background:#bbf7d0;color:#14532d">🤚 RIGHT hand: fingers = 1 each, thumb = 5</span>
+    </div>
+    <div id="handsWrap"></div>
+    <div class="live-value" style="margin-top:10px"><span class="lbl">Your hands say</span><span id="handTotal">0</span></div>
+    <div style="font-size:14px;font-weight:700;color:#64748b;margin-top:6px">👆 Tap fingers to press them down!</div>
+  </div>
+
+  <div class="hand-card">
+    <div class="hand-cap" id="handChallengeText">🎯 Ready for a challenge?</div>
+    <button class="check-btn" style="margin-top:8px;font-size:22px;padding:10px 26px" onclick="newHandChallenge()">Give me a number! 🎲</button>
+    <div class="feedback" id="handChFeedback" style="height:40px"></div>
+  </div>
+
+  <div class="hand-card">
+    <div class="hs-steps">
+      <div>✋ LEFT hand counts TENS: fingers are 10, 20, 30, 40 — add the thumb for 50</div>
+      <div>🤚 RIGHT hand counts ONES: fingers are 1, 2, 3, 4 — add the thumb for 5</div>
+      <div>👉 To make 7: press the right thumb (5) + 2 right fingers</div>
+      <div>👉 To make 36: press 3 left fingers (30) + right thumb (5) + 1 right finger</div>
+      <div>🔁 Practice: count 1 → 10, then count by 10s to 90, with your fingers!</div>
+    </div>
+  </div>
+
+  <button class="hs-confirm" onclick="openGate('hand')">I practiced my hands! ✅<br><span style="font-size:14px">(Mom or Dad taps to confirm)</span></button>
+  <div class="feedback" id="handFeedback"></div>
+</div>
+
 <!-- GEOMETRY GATE (parent lock on the clock) -->
 <div class="gate-overlay hidden" id="gateOverlay">
   <div class="gate-card">
     <div class="lock">🔒</div>
     <h3>Grown-ups only!</h3>
-    <div class="gsub">Solve this to stop the clock</div>
+    <div class="gsub" id="gateSub">Solve this to stop the clock</div>
     <div id="gateFigure" style="margin-bottom:10px"></div>
     <div class="gate-q" id="gateQuestion"></div>
     <input class="gate-input" id="gateAnswer" type="number" placeholder="?">
@@ -344,6 +403,27 @@ const LEVELS = [
     gen: () => ({ target: 1 + rand(9) }) },
   { id:9, name:"Flash Master", emoji:"🧠", color:"#fca5a5", desc:"No abacus — all in your head!", type:"flash", rods:0,
     gen: () => { const nums = [1 + rand(5), 1 + rand(5), 1 + rand(5)]; return { nums, target: nums[0] + nums[1] + nums[2] }; } },
+  { id:10, name:"Double Digits", emoji:"💪", color:"#a7f3d0", desc:"Big additions like 34 + 25", type:"math", rods:2,
+    gen: () => { const a = 11 + rand(40), b = 11 + rand(Math.min(48, 98 - a)); return { a, b, op:"+", target: a + b }; } },
+  { id:11, name:"Flash Pro", emoji:"🚀", color:"#fdba74", desc:"FOUR flashing numbers!", type:"flash", rods:0, spread:5,
+    gen: () => { const n = [2 + rand(8), 2 + rand(8), 2 + rand(8), 2 + rand(8)];
+      return { tokens: [n[0], "+" + n[1], "+" + n[2], "+" + n[3]], target: n[0] + n[1] + n[2] + n[3] }; } },
+  { id:12, name:"Flash Wizard", emoji:"🧙", color:"#c4b5fd", desc:"Plus AND minus in your head!", type:"flash", rods:0, spread:5, prompt:"Watch the + and − signs! 🧙",
+    gen: () => {
+      let run = 6 + rand(10); const tokens = [run];
+      for (let i = 0; i < 3; i++) {
+        if (run > 6 && rand(2) === 0) { const d = 1 + rand(Math.min(9, run - 1)); run -= d; tokens.push("−" + d); }
+        else { const d = 2 + rand(8); run += d; tokens.push("+" + d); }
+      }
+      return { tokens, target: run };
+    } },
+  { id:13, name:"Flash Genius", emoji:"🎓", color:"#fde047", desc:"5th grade: ×, ÷ and big sums!", type:"flash", rods:0, spread:8, prompt:"Solve the flashing problem! 🎓",
+    gen: () => {
+      const k = rand(3);
+      if (k === 0) { const a = 3 + rand(10), b = 3 + rand(10); return { tokens: [a, "× " + b], target: a * b }; }
+      if (k === 1) { const b = 3 + rand(10), q = 3 + rand(10); return { tokens: [b * q, "÷ " + b], target: q }; }
+      const a = 12 + rand(40), b = 12 + rand(40); return { tokens: [a, "+ " + b], target: a + b };
+    } },
 ];
 const QUESTIONS = 5;
 
@@ -380,6 +460,11 @@ const BELT_META = [
   { name: "Brown",  c: "#a16207", t: "#ffffff" },
   { name: "Red",    c: "#f87171", t: "#7f1d1d" },
   { name: "Black",  c: "#1e293b", t: "#ffffff" },
+  { name: "Bronze", c: "#d97706", t: "#ffffff" },
+  { name: "Silver", c: "#cbd5e1", t: "#334155" },
+  { name: "Gold",   c: "#fbbf24", t: "#78350f" },
+  { name: "Platinum", c: "#67e8f9", t: "#155e75" },
+  { name: "Diamond",  c: "#a5f3fc", t: "#0e7490" },
 ];
 const BELT_TESTS = [
   null, // White — everyone starts here
@@ -398,6 +483,28 @@ const BELT_TESTS = [
   { name: "Red", type: "lightning", timeSec: 60, targetScore: 12, desc: "Solve 12+ in a 60-second Lightning Round" },
   { name: "Black", type: "flash", rods: 0, count: 5, timeSec: 240, maxWrong: 1,
     gen: () => { const nums = [1 + rand(5), 1 + rand(5), 1 + rand(5)]; return { nums, target: nums[0] + nums[1] + nums[2] }; }, desc: "5 flash anzan problems — no abacus at all!" },
+  { name: "Bronze", type: "flash", rods: 0, count: 5, timeSec: 240, maxWrong: 1, spread: 5,
+    gen: () => { const n = [2 + rand(8), 2 + rand(8), 2 + rand(8), 2 + rand(8)];
+      return { tokens: [n[0], "+" + n[1], "+" + n[2], "+" + n[3]], target: n[0] + n[1] + n[2] + n[3] }; }, desc: "5 four-number flashes in 4 min" },
+  { name: "Silver", type: "flash", rods: 0, count: 5, timeSec: 240, maxWrong: 1, spread: 5, prompt: "Watch the + and − signs! 🧙",
+    gen: () => {
+      let run = 6 + rand(10); const tokens = [run];
+      for (let i = 0; i < 3; i++) {
+        if (run > 6 && rand(2) === 0) { const d = 1 + rand(Math.min(9, run - 1)); run -= d; tokens.push("−" + d); }
+        else { const d = 2 + rand(8); run += d; tokens.push("+" + d); }
+      }
+      return { tokens, target: run };
+    }, desc: "5 plus-and-minus flashes in 4 min" },
+  { name: "Gold", type: "math", rods: 2, count: 6, timeSec: 240, maxWrong: 2,
+    gen: () => { const a = 11 + rand(40), b = 11 + rand(Math.min(48, 98 - a)); return { a, b, op: "+", target: a + b }; }, desc: "6 double-digit additions in 4 min" },
+  { name: "Platinum", type: "lightning", timeSec: 60, targetScore: 20, desc: "Solve 20+ in a 60-second Lightning Round" },
+  { name: "Diamond", type: "flash", rods: 0, count: 5, timeSec: 300, maxWrong: 1, spread: 8, prompt: "Solve the flashing problem! 🎓",
+    gen: () => {
+      const k = rand(3);
+      if (k === 0) { const a = 3 + rand(10), b = 3 + rand(10); return { tokens: [a, "× " + b], target: a * b }; }
+      if (k === 1) { const b = 3 + rand(10), q = 3 + rand(10); return { tokens: [b * q, "÷ " + b], target: q }; }
+      const a = 12 + rand(40), b = 12 + rand(40); return { tokens: [a, "+ " + b], target: a + b };
+    }, desc: "5 problems with ×, ÷ and big sums in 5 min" },
 ];
 
 function makeChoicesRange(target, lo, hi) {
@@ -414,7 +521,7 @@ function startBeltTest() {
   screenToken++;
   state.lastMode = { kind: "belt" };
   if (t.type === "lightning") { startLightning(next); return; }
-  state.customLevel = { name: t.name + " Belt Test", emoji: "🥋", type: t.type, rods: t.rods, gen: t.gen };
+  state.customLevel = { name: t.name + " Belt Test", emoji: "🥋", type: t.type, rods: t.rods, gen: t.gen, spread: t.spread, prompt: t.prompt };
   state.exam = { count: t.count, timeLeft: t.timeSec, maxWrong: t.maxWrong, wrong: 0, beltIndex: next, lightning: false, score: 0 };
   state.qIndex = 0; state.stars = 0;
   state.exam.tick = setInterval(examTick, 1000);
@@ -481,8 +588,8 @@ function examEnd(passedByCount) {
     scoreLine = `⚡ ${e.score}`;
     if (e.beltIndex != null) {
       passed = e.score >= e.targetScore;
-      msg = passed ? `${e.score} solved — the RED BELT is yours! 🔥`
-                   : `${e.score} solved — you need ${e.targetScore} for the Red Belt. Practice and retry!`;
+      msg = passed ? `${e.score} solved — the ${BELT_TESTS[e.beltIndex].name.toUpperCase()} BELT is yours! 🔥`
+                   : `${e.score} solved — you need ${e.targetScore} for the ${BELT_TESTS[e.beltIndex].name} Belt. Practice and retry!`;
     } else {
       passed = e.score > 0;
       msg = `${e.score} solved in 60 seconds! Best ever: ${state.lightningBest} ⚡`;
@@ -534,7 +641,7 @@ function startSession(mins) {
     startMs: Date.now(),
     endMs: Date.now() + mins * 60 * 1000,
     solved: {}, wrongTries: 0, completed: [],
-    gateAttempts: 0, gateWrong: 0, gateTimeMs: 0
+    gateAttempts: 0, gateWrong: 0, gateTimeMs: 0, handConfirmed: false
   };
   const badge = document.getElementById("timerBadge");
   badge.classList.remove("hidden", "low");
@@ -623,11 +730,16 @@ function makeGateProblem() {
   return { q, a, svg };
 }
 
-function openGate() {
-  if (!session || gate) return;
+function openGate(purpose) {
+  purpose = purpose || "end";
+  if (gate) return;
+  if (purpose === "end" && !session) return;
   const p = makeGateProblem();
-  gate = { answer: p.a, openedMs: Date.now() };
-  session.gateAttempts++;
+  gate = { answer: p.a, openedMs: Date.now(), purpose };
+  if (session) session.gateAttempts++;
+  document.getElementById("gateSub").textContent = purpose === "hand"
+    ? "Mom or Dad: solve this to confirm hand practice"
+    : "Solve this to stop the clock";
   document.getElementById("gateFigure").innerHTML = p.svg;
   document.getElementById("gateQuestion").textContent = p.q;
   document.getElementById("gateAnswer").value = "";
@@ -648,11 +760,13 @@ function checkGate() {
   const v = parseFloat(document.getElementById("gateAnswer").value);
   if (v === gate.answer) {
     tone(660, 0.12, "sine", 0.15); tone(990, 0.2, "sine", 0.15, 0.1);
+    const purpose = gate.purpose;
     bankGateTime();
     document.getElementById("gateOverlay").classList.add("hidden");
-    endSession(true);
+    if (purpose === "hand") confirmHandPractice();
+    else endSession(true);
   } else {
-    session.gateWrong++;
+    if (session) session.gateWrong++;
     oopsSound();
     document.getElementById("gateWrong").textContent = "Nope! Back to the abacus 😄";
     // new problem so answers can't be brute-forced
@@ -662,6 +776,102 @@ function checkGate() {
     document.getElementById("gateQuestion").textContent = p.q;
     document.getElementById("gateAnswer").value = "";
   }
+}
+
+// ============ Hand School (finger counting: left = tens, right = ones) ============
+const handState = {
+  L: { thumb: false, fingers: [false, false, false, false] },
+  R: { thumb: false, fingers: [false, false, false, false] }
+};
+let handChallenge = null;
+
+function handValue() {
+  const lf = handState.L.fingers.filter(Boolean).length;
+  const rf = handState.R.fingers.filter(Boolean).length;
+  return (handState.L.thumb ? 50 : 0) + lf * 10 + (handState.R.thumb ? 5 : 0) + rf;
+}
+
+function toggleFinger(hand, part, idx) {
+  clickSound();
+  if (part === "t") handState[hand].thumb = !handState[hand].thumb;
+  else handState[hand].fingers[idx] = !handState[hand].fingers[idx];
+  renderHands();
+  const v = handValue();
+  if (handChallenge != null && v === handChallenge) {
+    yaySound(); confetti();
+    const f = document.getElementById("handChFeedback");
+    f.textContent = "🎉 YES! That's " + v + "!";
+    f.className = "feedback yay";
+    handChallenge = null;
+    document.getElementById("handChallengeText").textContent = "🎯 Ready for another?";
+  }
+}
+
+function newHandChallenge() {
+  handChallenge = 1 + rand(99);
+  document.getElementById("handChallengeText").textContent = "🎯 Show me " + handChallenge + " with your fingers!";
+  const f = document.getElementById("handChFeedback");
+  f.textContent = ""; f.className = "feedback";
+  handState.L = { thumb: false, fingers: [false, false, false, false] };
+  handState.R = { thumb: false, fingers: [false, false, false, false] };
+  renderHands();
+}
+
+function renderHands() {
+  const skin = "#fdba74", skinEdge = "#9a3412", press = "#f59e0b", pressEdge = "#7c2d12";
+  function finger(hand, idx, x, h, label) {
+    const pressed = handState[hand].fingers[idx];
+    const hh = pressed ? h - 16 : h;
+    const y = 128 - hh;
+    const fill = pressed ? press : skin, edge = pressed ? pressEdge : skinEdge;
+    return `<g onclick="toggleFinger('${hand}','f',${idx})" style="cursor:pointer">
+      <rect x="${x}" y="${y}" width="24" height="${hh + 20}" rx="12" fill="${fill}" stroke="${edge}" stroke-width="3"/>
+      <circle cx="${x + 12}" cy="${y + 14}" r="11" fill="#fff" stroke="${edge}" stroke-width="2"/>
+      <text x="${x + 12}" y="${y + 18}" text-anchor="middle" font-size="11" font-weight="bold" fill="${edge}">${label}</text>
+    </g>`;
+  }
+  function thumb(hand, cx, cy, rot, label, lx) {
+    const pressed = handState[hand].thumb;
+    const fill = pressed ? press : skin, edge = pressed ? pressEdge : skinEdge;
+    return `<g onclick="toggleFinger('${hand}','t')" style="cursor:pointer">
+      <ellipse cx="${cx}" cy="${cy}" rx="30" ry="15" fill="${fill}" stroke="${edge}" stroke-width="3" transform="rotate(${rot} ${cx} ${cy})"/>
+      <circle cx="${lx}" cy="${cy + 26}" r="11" fill="#fff" stroke="${edge}" stroke-width="2"/>
+      <text x="${lx}" y="${cy + 30}" text-anchor="middle" font-size="11" font-weight="bold" fill="${edge}">${label}</text>
+    </g>`;
+  }
+  const Lx = 18, Rx = 205;
+  const Lh = [66, 82, 94, 80];  // pinky, ring, middle, index
+  const Rh = [80, 94, 82, 66];  // index, middle, ring, pinky
+  let svg = `<svg viewBox="0 0 350 215" width="100%" style="max-width:360px">`;
+  for (let i = 0; i < 4; i++) svg += finger("L", i, Lx + i * 30, Lh[i], "10");
+  for (let i = 0; i < 4; i++) svg += finger("R", i, Rx + i * 30, Rh[i], "1");
+  svg += `<rect x="${Lx - 4}" y="120" width="126" height="72" rx="28" fill="${skin}" stroke="${skinEdge}" stroke-width="3"/>`;
+  svg += `<rect x="${Rx - 4}" y="120" width="126" height="72" rx="28" fill="${skin}" stroke="${skinEdge}" stroke-width="3"/>`;
+  svg += thumb("L", 146, 148, -50, "50", 158);
+  svg += thumb("R", 199, 148, 50, "5", 187);
+  svg += `<text x="${Lx + 58}" y="210" text-anchor="middle" font-size="13" font-weight="bold" fill="#3730a3">✋ LEFT = TENS</text>`;
+  svg += `<text x="${Rx + 58}" y="210" text-anchor="middle" font-size="13" font-weight="bold" fill="#14532d">RIGHT = ONES 🤚</text>`;
+  svg += `</svg>`;
+  document.getElementById("handsWrap").innerHTML = svg;
+  const t = document.getElementById("handTotal");
+  if (t) t.textContent = handValue();
+}
+
+function openHandSchool() {
+  const f = document.getElementById("handFeedback");
+  f.textContent = ""; f.className = "feedback";
+  renderHands();
+  show("handschool");
+}
+function confirmHandPractice() {
+  const today = new Date().toDateString();
+  const hd = store.get("handDays", { last: null, total: 0 });
+  if (hd.last !== today) { hd.total++; hd.last = today; store.set("handDays", hd); }
+  if (session) session.handConfirmed = true;
+  yaySound(); confetti();
+  const f = document.getElementById("handFeedback");
+  f.textContent = "⭐ Confirmed! Amazing hand work!";
+  f.className = "feedback yay";
 }
 
 function recordSolve() {
@@ -698,7 +908,8 @@ function endSession(early) {
     <div class="stat-row"><span>💪 Extra tries needed</span><span class="val">${s.wrongTries}</span></div>
     <div class="stat-row"><span>🏁 Levels finished</span><span class="val">${s.completed.length}</span></div>
     ${totalSolved > 0 ? `<div class="stat-row"><span>⚡ Pace</span><span class="val">~${perProblem}s per problem</span></div>` : ""}
-    ${s.gateAttempts > 0 ? `<div class="stat-row"><span>🔒 Clock lock opened</span><span class="val">${s.gateAttempts}× (${s.gateWrong} wrong)</span></div>
+    ${s.handConfirmed ? `<div class="stat-row"><span>🖐️ Hand practice</span><span class="val">Confirmed ✅</span></div>` : ""}
+    ${s.gateAttempts > 0 ? `<div class="stat-row"><span>🔒 Parent lock opened</span><span class="val">${s.gateAttempts}× (${s.gateWrong} wrong)</span></div>
     <div class="stat-row"><span>⏱️ Time spent at the lock</span><span class="val">${gateSecs >= 60 ? Math.floor(gateSecs/60) + "m " + (gateSecs%60) + "s" : gateSecs + "s"}</span></div>` : ""}`;
 
   const lvlDiv = document.getElementById("reportLevels");
@@ -728,7 +939,7 @@ function closeReport() {
 
 // ============ Screens ============
 function show(id) {
-  ["home","play","results","report"].forEach(s => document.getElementById(s).classList.toggle("hidden", s !== id));
+  ["home","play","results","report","handschool"].forEach(s => document.getElementById(s).classList.toggle("hidden", s !== id));
   window.scrollTo(0, 0);
 }
 function goHome() { screenToken++; clearExam(); renderHome(); show("home"); }
@@ -740,7 +951,8 @@ function renderHome() {
   document.getElementById("statusRow").innerHTML = `
     <span class="chip" style="background:${belt.c};color:${belt.t}">🥋 ${belt.name} Belt</span>
     <span class="chip" style="background:#fff;color:#b45309">🔥 ${streakCount()}-day streak</span>
-    <span class="chip" style="background:#fff;color:#4338ca">⚡ Best: ${state.lightningBest || 0}</span>`;
+    <span class="chip" style="background:#fff;color:#4338ca">⚡ Best: ${state.lightningBest || 0}</span>
+    <span class="chip" style="background:#fff;color:#7c2d12">🖐️ ${store.get("handDays", { total: 0 }).total} hand days</span>`;
 
   // special mode buttons
   const next = state.belt + 1;
@@ -749,10 +961,11 @@ function renderHome() {
     const t = BELT_TESTS[next], m = BELT_META[next];
     beltBtn = `<button class="mode-btn" style="background:${m.c};color:${m.t}" onclick="startBeltTest()">🥋 Test for the ${t.name} Belt<span class="mode-desc">${t.desc}</span></button>`;
   } else {
-    beltBtn = `<button class="mode-btn" style="background:#1e293b;color:#fff">🖤 BLACK BELT MASTER! You did it!</button>`;
+    beltBtn = `<button class="mode-btn" style="background:#a5f3fc;color:#0e7490">💎 DIAMOND MASTER! You beat every belt!</button>`;
   }
   document.getElementById("modeRow").innerHTML = beltBtn +
-    `<button class="mode-btn" style="background:#fef08a;color:#713f12" onclick="startLightning(null)">⚡ Lightning Round<span class="mode-desc">60 seconds — solve as many as you can!</span></button>`;
+    `<button class="mode-btn" style="background:#fef08a;color:#713f12" onclick="startLightning(null)">⚡ Lightning Round<span class="mode-desc">60 seconds — solve as many as you can!</span></button>` +
+    `<button class="mode-btn" style="background:#fdba74;color:#7c2d12" onclick="openHandSchool()">🖐️ Hand School<span class="mode-desc">Learn the real finger moves — Mom or Dad confirms your practice!</span></button>`;
 
   // level list
   const list = document.getElementById("levelList");
@@ -805,7 +1018,8 @@ function newQuestion() {
     state.choices = makeChoicesRange(state.question.target, 1, 9);
   } else if (lv.type === "flash") {
     const t = state.question.target;
-    state.choices = makeChoicesRange(t, Math.max(2, t - 4), t + 4);
+    const spread = lv.spread || 4;
+    state.choices = makeChoicesRange(t, Math.max(1, t - spread), t + spread);
   }
   renderPlay();
 }
@@ -848,7 +1062,7 @@ function renderPlay() {
   if (kind === "make") card.innerHTML = `Make the number <span class="big">${q.target}</span>`;
   else if (kind === "math") card.innerHTML = `<span class="math">${q.a} ${q.op} ${q.b}</span> = ?`;
   else if (kind === "ghost") card.innerHTML = `Look fast — it's going to vanish! 👻`;
-  else if (kind === "flash") card.innerHTML = `Add the flashing numbers in your head! 🧠`;
+  else if (kind === "flash") card.innerHTML = lv.prompt || `Add the flashing numbers in your head! 🧠`;
   else card.innerHTML = `What number is this? 🤔`;
 
   // abacus / flash display
@@ -890,7 +1104,7 @@ function renderPlay() {
 function renderFlash(token) {
   const wrap = document.getElementById("abacusWrap");
   wrap.innerHTML = `<div class="flash-box" id="flashBox">👀</div>`;
-  const nums = state.question.nums;
+  const nums = state.question.tokens || state.question.nums;
   state.locked = true; // no answering until the sequence finishes
   nums.forEach((n, i) => {
     setTimeout(() => {
@@ -901,13 +1115,17 @@ function renderFlash(token) {
     setTimeout(() => {
       if (token !== screenToken) return;
       const b = document.getElementById("flashBox");
-      if (b) { b.textContent = n; tone(560 + i * 90, 0.1, "triangle", 0.12); }
+      if (b) {
+        b.textContent = n;
+        b.style.fontSize = String(n).length > 3 ? "44px" : "72px";
+        tone(560 + i * 90, 0.1, "triangle", 0.12);
+      }
     }, 850 + i * 1000);
   });
   setTimeout(() => {
     if (token !== screenToken) return;
     const b = document.getElementById("flashBox");
-    if (b) b.textContent = "= ?";
+    if (b) { b.textContent = "= ?"; b.style.fontSize = "72px"; }
     state.locked = false;
   }, 850 + nums.length * 1000);
 }
